@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Home, Grid, User, Mail, Maximize2, Volume2, VolumeX, Lock, Menu, ChevronDown } from 'lucide-react';
 import type { ViewState } from '../types';
+import { Home, Grid, User, Mail, Maximize2, Volume2, VolumeX, Menu, ChevronDown } from 'lucide-react';
 
 interface TVControlsProps {
   currentView: ViewState;
@@ -26,23 +26,18 @@ const TVControls: React.FC<TVControlsProps> = ({
     { id: 'CONTACT', icon: Mail, label: 'Liên Hệ' },
   ];
 
-  const handleAdminClick = () => {
-    // Navigate to the "secret" link as requested
-    window.location.hash = '/adminvmedia';
-    setIsMobileMenuOpen(false);
-  };
-
   return (
     <>
       {/* 
         DESKTOP INTERACTION (Hidden on mobile)
-        Using a smaller, higher hover zone to avoid blocking YouTube bottom scrubber 
+        Positioned at bottom-12 (approx 48px) to sit just above the YouTube control bar 
+        but lower than the previous high position.
       */}
-      <div className="hidden md:flex fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex-col items-center justify-end pb-2 group">
+      <div className="hidden md:flex fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex-col items-center justify-end pb-2 group">
         
-        {/* The Controls Bar - Positioned HIGHER (bottom-24 equivalent) to clear video controls */}
+        {/* The Controls Bar */}
         <div className="
-          mb-4
+          mb-2
           backdrop-blur-xl 
           bg-white/90 
           border border-white/50 
@@ -107,14 +102,6 @@ const TVControls: React.FC<TVControlsProps> = ({
             >
               <Maximize2 size={22} />
             </button>
-            {/* Admin Button */}
-            <button 
-              onClick={handleAdminClick}
-              className={`text-neutral-500 hover:text-gold-600 transition-colors p-2 hover:bg-gold-50 rounded-full hover:scale-105 active:scale-95 ${currentView === 'ADMIN' ? 'text-gold-600' : ''}`}
-              title="Quản trị viên"
-            >
-              <Lock size={18} />
-            </button>
           </div>
         </div>
         
@@ -130,7 +117,7 @@ const TVControls: React.FC<TVControlsProps> = ({
 
       {/* 
         MOBILE INTERACTION
-        Toggle button at bottom-right instead of hover
+        Toggle button at bottom-right
       */}
       <div className="md:hidden">
          {/* Toggle Button */}
@@ -194,12 +181,6 @@ const TVControls: React.FC<TVControlsProps> = ({
                   className="p-3 bg-neutral-50 rounded-full text-neutral-600 active:scale-95 transition-transform"
                 >
                    <Maximize2 size={20} />
-                </button>
-                <button 
-                   onClick={handleAdminClick}
-                   className={`p-3 bg-neutral-50 rounded-full active:scale-95 transition-transform ${currentView === 'ADMIN' ? 'text-gold-600 bg-gold-50' : 'text-neutral-600'}`}
-                >
-                   <Lock size={20} />
                 </button>
              </div>
          </div>

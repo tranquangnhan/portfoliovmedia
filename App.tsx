@@ -134,88 +134,97 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen bg-black overflow-hidden select-none font-sans group/app">
-      <div className="absolute inset-0 z-0">
-        <EmbedPlayer 
-          item={activeItem} 
-          muted={isMuted}
-          className="transition-opacity duration-1000 ease-in-out"
+    // Global Scaling Container
+    // We set width/height to 125% and scale to 0.8 (100/125 = 0.8) to shrink the interface while keeping it full screen
+    <div className="fixed inset-0 w-screen h-screen bg-black overflow-hidden">
+      <div className="w-[125%] h-[125%] origin-top-left transform scale-[0.8] relative font-sans select-none group/app">
+        
+        <div className="absolute inset-0 z-0">
+          <EmbedPlayer 
+            item={activeItem} 
+            muted={isMuted}
+            className="transition-opacity duration-1000 ease-in-out"
+          />
+        </div>
+
+        {view === 'HOME' && items.length > 1 && (
+          <>
+            {/* 
+              PREV/NEXT BUTTONS
+              Added bottom-24 to stop at ~96px from bottom, leaving space for YouTube scrubber 
+            */}
+            <button 
+              onClick={handlePrev}
+              className="hidden md:flex absolute left-0 top-0 bottom-24 w-24 z-30 items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 group/nav cursor-pointer"
+              aria-label="Previous Video"
+            >
+              <div className="p-4 bg-black/20 backdrop-blur-md rounded-full border border-white/10 group-hover/nav:bg-gold-500/80 group-hover/nav:border-gold-400 group-hover/nav:scale-110 transition-all duration-300">
+                <ChevronLeft className="text-white w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
+              </div>
+            </button>
+
+            <button 
+              onClick={handleNext}
+              className="hidden md:flex absolute right-0 top-0 bottom-24 w-24 z-30 items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 group/nav cursor-pointer"
+              aria-label="Next Video"
+            >
+              <div className="p-4 bg-black/20 backdrop-blur-md rounded-full border border-white/10 group-hover/nav:bg-gold-500/80 group-hover/nav:border-gold-400 group-hover/nav:scale-110 transition-all duration-300">
+                <ChevronRight className="text-white w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
+              </div>
+            </button>
+          </>
+        )}
+
+        <PortfolioGrid 
+          items={items} 
+          isVisible={view === 'PORTFOLIO'} 
+          onSelect={handleSelectProject} 
+        />
+        
+        <InfoOverlay view={view} contactInfo={contactInfo} />
+
+        {view === 'ADMIN' && (
+          <AdminPanel 
+            items={items} 
+            contactInfo={contactInfo}
+            onUpdateItems={handleUpdateItems} 
+            onUpdateContactInfo={handleUpdateContactInfo}
+            onExit={() => handleNavigate('HOME')} 
+          />
+        )}
+
+        {view === 'HOME' && activeItem && (
+          <div className="absolute top-6 left-6 md:top-8 md:left-12 z-20 max-w-[70%] md:max-w-md animate-slide-up pointer-events-none">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-[1px] w-6 md:w-8 bg-gold-400"></div>
+              <span className="text-gold-400 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">Đang Trình Chiếu</span>
+            </div>
+            <h1 className="text-2xl md:text-5xl font-serif text-white mb-2 leading-tight drop-shadow-md">
+              {activeItem.title}
+            </h1>
+            <p className="text-white/70 text-xs md:text-base font-light border-l-2 border-white/20 pl-4 py-1 hidden md:block">
+              {activeItem.description}
+            </p>
+          </div>
+        )}
+
+        {view === 'HOME' && items.length > 0 && activeItem?.id !== items[0].id && (
+          <button 
+            onClick={() => handleNavigate('PORTFOLIO')}
+            className="absolute top-6 right-6 md:top-8 md:right-8 z-30 p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-gold-500 transition-colors"
+          >
+            <X size={20} className="md:w-6 md:h-6" />
+          </button>
+        )}
+
+        <TVControls 
+          currentView={view} 
+          onNavigate={handleNavigate} 
+          isMuted={isMuted}
+          toggleMute={() => setIsMuted(!isMuted)}
+          toggleFullscreen={toggleFullscreen}
         />
       </div>
-
-      {view === 'HOME' && items.length > 1 && (
-        <>
-          <button 
-            onClick={handlePrev}
-            className="hidden md:flex absolute left-0 top-0 bottom-0 w-24 z-30 items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 group/nav cursor-pointer"
-            aria-label="Previous Video"
-          >
-             <div className="p-4 bg-black/20 backdrop-blur-md rounded-full border border-white/10 group-hover/nav:bg-gold-500/80 group-hover/nav:border-gold-400 group-hover/nav:scale-110 transition-all duration-300">
-               <ChevronLeft className="text-white w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
-             </div>
-          </button>
-
-          <button 
-            onClick={handleNext}
-            className="hidden md:flex absolute right-0 top-0 bottom-0 w-24 z-30 items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 group/nav cursor-pointer"
-             aria-label="Next Video"
-          >
-             <div className="p-4 bg-black/20 backdrop-blur-md rounded-full border border-white/10 group-hover/nav:bg-gold-500/80 group-hover/nav:border-gold-400 group-hover/nav:scale-110 transition-all duration-300">
-               <ChevronRight className="text-white w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
-             </div>
-          </button>
-        </>
-      )}
-
-      <PortfolioGrid 
-        items={items} 
-        isVisible={view === 'PORTFOLIO'} 
-        onSelect={handleSelectProject} 
-      />
-      
-      <InfoOverlay view={view} contactInfo={contactInfo} />
-
-      {view === 'ADMIN' && (
-        <AdminPanel 
-          items={items} 
-          contactInfo={contactInfo}
-          onUpdateItems={handleUpdateItems} 
-          onUpdateContactInfo={handleUpdateContactInfo}
-          onExit={() => handleNavigate('HOME')} 
-        />
-      )}
-
-      {view === 'HOME' && activeItem && (
-        <div className="absolute top-6 left-6 md:top-8 md:left-12 z-20 max-w-[70%] md:max-w-md animate-slide-up pointer-events-none">
-           <div className="flex items-center gap-3 mb-2">
-             <div className="h-[1px] w-6 md:w-8 bg-gold-400"></div>
-             <span className="text-gold-400 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">Đang Trình Chiếu</span>
-           </div>
-           <h1 className="text-2xl md:text-5xl font-serif text-white mb-2 leading-tight drop-shadow-md">
-             {activeItem.title}
-           </h1>
-           <p className="text-white/70 text-xs md:text-base font-light border-l-2 border-white/20 pl-4 py-1 hidden md:block">
-             {activeItem.description}
-           </p>
-        </div>
-      )}
-
-      {view === 'HOME' && items.length > 0 && activeItem?.id !== items[0].id && (
-         <button 
-           onClick={() => handleNavigate('PORTFOLIO')}
-           className="absolute top-6 right-6 md:top-8 md:right-8 z-30 p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-gold-500 transition-colors"
-         >
-           <X size={20} className="md:w-6 md:h-6" />
-         </button>
-      )}
-
-      <TVControls 
-        currentView={view} 
-        onNavigate={handleNavigate} 
-        isMuted={isMuted}
-        toggleMute={() => setIsMuted(!isMuted)}
-        toggleFullscreen={toggleFullscreen}
-      />
     </div>
   );
 };
