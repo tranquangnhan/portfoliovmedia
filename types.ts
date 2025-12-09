@@ -18,6 +18,10 @@ export interface ContactInfo {
   facebook: string;
   zalo: string;
   address: string;
+  // SEO Fields
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
 }
 
 export type ViewState = 'HOME' | 'PORTFOLIO' | 'ABOUT' | 'CONTACT' | 'ADMIN';

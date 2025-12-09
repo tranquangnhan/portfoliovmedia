@@ -1,6 +1,6 @@
 import React from 'react';
 import { Play, Image as ImageIcon } from 'lucide-react';
-import { PortfolioItem } from '../types';
+import type { PortfolioItem } from '../types';
 
 interface PortfolioGridProps {
   items: PortfolioItem[];

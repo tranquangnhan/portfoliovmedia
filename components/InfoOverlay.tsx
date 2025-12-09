@@ -1,5 +1,5 @@
 import React from 'react';
-import { ViewState, ContactInfo } from '../types';
+import type { ViewState, ContactInfo } from '../types';
 import { Mail, Instagram, MapPin, Phone, Facebook } from 'lucide-react';
 
 interface InfoOverlayProps {

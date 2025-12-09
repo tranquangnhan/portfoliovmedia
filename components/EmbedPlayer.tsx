@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PortfolioItem } from '../types';
+import type { PortfolioItem } from '../types';
 import { Play } from 'lucide-react';
 
 interface EmbedPlayerProps {
