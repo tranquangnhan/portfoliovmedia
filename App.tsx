@@ -7,57 +7,76 @@ import AdminPanel from './components/AdminPanel';
 import type { ViewState, PortfolioItem, ContactInfo } from './types';
 import { INITIAL_DATABASE } from './database';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { db } from './firebaseConfig';
+import { ref, onValue, set } from 'firebase/database';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('HOME');
   
-  // VERSION 2 KEYS: Force reload to clear old data with time parameters
-  const STORAGE_KEY_ITEMS = 'luxe_portfolio_items_v2';
-  const STORAGE_KEY_CONTACT = 'luxe_contact_info_v2';
+  // Initialize with fallback database.ts to prevent blank screen while loading Firebase
+  const [items, setItems] = useState<PortfolioItem[]>(INITIAL_DATABASE?.portfolioItems || []);
   
-  // Initialize from LocalStorage OR fall back to database.ts
-  const [items, setItems] = useState<PortfolioItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_ITEMS);
-      return saved ? JSON.parse(saved) : (INITIAL_DATABASE?.portfolioItems || []);
-    } catch (e) {
-      return INITIAL_DATABASE?.portfolioItems || [];
-    }
-  });
-
-  const [contactInfo, setContactInfo] = useState<ContactInfo>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CONTACT);
-      if (saved) {
-        // Merge saved data with initial structure to ensure new fields (like facebook/zalo) exist
-        return { ...(INITIAL_DATABASE?.contactInfo || {}), ...JSON.parse(saved) };
-      }
-      return INITIAL_DATABASE?.contactInfo || {
-        bio: '', email: '', phone: '', instagram: '', facebook: '', zalo: '', address: ''
-      };
-    } catch (e) {
-      return INITIAL_DATABASE?.contactInfo || {
-        bio: '', email: '', phone: '', instagram: '', facebook: '', zalo: '', address: ''
-      };
-    }
+  const [contactInfo, setContactInfo] = useState<ContactInfo>(INITIAL_DATABASE?.contactInfo || {
+    bio: '', email: '', phone: '', instagram: '', facebook: '', zalo: '', address: ''
   });
 
   const [activeItem, setActiveItem] = useState<PortfolioItem>(items[0] || null);
   const [isMuted, setIsMuted] = useState(false);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
 
-  // Check URL Hash for Admin Access on Mount & Change
+  // --- FIREBASE SYNC ---
+  useEffect(() => {
+    // Reference to 'portfolioItems' in Firebase
+    const itemsRef = ref(db, 'portfolioItems');
+    
+    // Listen for changes
+    const unsubscribeItems = onValue(itemsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setItems(data);
+        // If the currently active item was deleted/changed, or on first load, reset active item
+        setActiveItem((prev) => {
+          const exists = data.find((i: PortfolioItem) => i.id === prev?.id);
+          return exists || data[0] || null;
+        });
+      } else {
+        // If DB is empty (new project), set initial data to Firebase
+        // This acts as a seeder
+        set(itemsRef, INITIAL_DATABASE.portfolioItems);
+      }
+      setIsLoadingFirebase(false);
+    }, (error) => {
+      console.error("Firebase read failed:", error);
+      // Fallback to local is already handled by initial state, just stop loading
+      setIsLoadingFirebase(false);
+    });
+
+    // Reference to 'contactInfo' in Firebase
+    const contactRef = ref(db, 'contactInfo');
+    const unsubscribeContact = onValue(contactRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setContactInfo((prev) => ({ ...prev, ...data })); // Merge to ensure new fields
+      } else {
+         // Seed initial contact info if empty
+         set(contactRef, INITIAL_DATABASE.contactInfo);
+      }
+    });
+
+    return () => {
+      unsubscribeItems();
+      unsubscribeContact();
+    };
+  }, []);
+
+  // Check URL Hash for Admin Access
   useEffect(() => {
     const checkHash = () => {
-      // Check if the URL ends with /adminvmedia (path) or has the hash #/adminvmedia
       if (window.location.hash === '#/adminvmedia' || window.location.pathname.endsWith('/adminvmedia')) {
         setView('ADMIN');
       }
     };
-    
-    // Check initially
     checkHash();
-
-    // Add listener
     window.addEventListener('hashchange', checkHash);
     return () => window.removeEventListener('hashchange', checkHash);
   }, []);
@@ -80,21 +99,8 @@ const App: React.FC = () => {
     if (contactInfo.seoKeywords) updateMeta('keywords', contactInfo.seoKeywords);
   }, [contactInfo]);
 
-  // Sync to LocalStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
-    if (items.length > 0 && !items.find(i => i.id === activeItem?.id)) {
-      setActiveItem(items[0]);
-    }
-  }, [items]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CONTACT, JSON.stringify(contactInfo));
-  }, [contactInfo]);
-
   const handleNavigate = (newView: ViewState) => {
     setView(newView);
-    // Clear admin hash if leaving admin
     if (view === 'ADMIN' && newView !== 'ADMIN') {
       window.history.pushState(null, '', window.location.pathname);
     }
@@ -105,24 +111,37 @@ const App: React.FC = () => {
     setView('HOME'); 
   };
 
+  // UPDATE DATA TO FIREBASE
   const handleUpdateItems = (updatedItems: PortfolioItem[]) => {
-    setItems(updatedItems);
+    // Optimistic update
+    setItems(updatedItems); 
+    // Write to Firebase
+    set(ref(db, 'portfolioItems'), updatedItems).catch(err => {
+      console.error("Firebase write error:", err);
+      alert("Lỗi lưu dữ liệu lên Firebase. Vui lòng kiểm tra cấu hình.");
+    });
   };
 
   const handleUpdateContactInfo = (updatedInfo: ContactInfo) => {
+    // Optimistic update
     setContactInfo(updatedInfo);
+    // Write to Firebase
+    set(ref(db, 'contactInfo'), updatedInfo).catch(err => {
+      console.error("Firebase write error:", err);
+      alert("Lỗi lưu dữ liệu lên Firebase. Vui lòng kiểm tra cấu hình.");
+    });
   };
 
   const handleNext = () => {
     if (items.length === 0) return;
-    const currentIndex = items.findIndex(item => item.id === activeItem.id);
+    const currentIndex = items.findIndex(item => item.id === activeItem?.id);
     const nextIndex = (currentIndex + 1) % items.length;
     setActiveItem(items[nextIndex]);
   };
 
   const handlePrev = () => {
     if (items.length === 0) return;
-    const currentIndex = items.findIndex(item => item.id === activeItem.id);
+    const currentIndex = items.findIndex(item => item.id === activeItem?.id);
     const prevIndex = (currentIndex - 1 + items.length) % items.length;
     setActiveItem(items[prevIndex]);
   };
@@ -139,7 +158,6 @@ const App: React.FC = () => {
 
   return (
     // Global Scaling Container
-    // We set width/height to 125% and scale to 0.8 (100/125 = 0.8) to shrink the interface while keeping it full screen
     <div className="fixed inset-0 w-screen h-screen bg-black overflow-hidden">
       <div className="w-[125%] h-[125%] origin-top-left transform scale-[0.8] relative font-sans select-none group/app">
         
@@ -153,10 +171,6 @@ const App: React.FC = () => {
 
         {view === 'HOME' && items.length > 1 && (
           <>
-            {/* 
-              PREV/NEXT BUTTONS
-              Added bottom-24 to stop at ~96px from bottom, leaving space for YouTube scrubber 
-            */}
             <button 
               onClick={handlePrev}
               className="hidden md:flex absolute left-0 top-0 bottom-24 w-24 z-30 items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 group/nav cursor-pointer"
