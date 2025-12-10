@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ViewState } from '../types';
-import { Home, Grid, User, Mail, Maximize2, Volume2, VolumeX, Menu, ChevronDown } from 'lucide-react';
+import { Home, Grid, User, Mail, Maximize2, Volume2, VolumeX, Menu, X } from 'lucide-react';
 
 interface TVControlsProps {
   currentView: ViewState;
@@ -30,8 +30,7 @@ const TVControls: React.FC<TVControlsProps> = ({
     <>
       {/* 
         DESKTOP INTERACTION (Hidden on mobile)
-        Positioned at bottom-12 (approx 48px) to sit just above the YouTube control bar 
-        but lower than the previous high position.
+        Positioned at bottom-12 (approx 48px) to sit just above the YouTube control bar.
       */}
       <div className="hidden md:flex fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex-col items-center justify-end pb-2 group">
         
@@ -68,15 +67,15 @@ const TVControls: React.FC<TVControlsProps> = ({
                   <div className={`
                     p-2.5 rounded-full transition-all duration-300 ease-out
                     ${isActive 
-                      ? 'bg-gold-500 text-white shadow-lg shadow-gold-500/30 -translate-y-2 scale-110' 
-                      : 'text-neutral-500 hover:text-gold-600 hover:bg-gold-100/50 hover:-translate-y-1'}
+                      ? 'bg-gold-500 text-white shadow-[0_0_20px_rgba(212,175,55,0.5)] ring-2 ring-gold-100/50' 
+                      : 'text-neutral-500 hover:text-gold-600 hover:bg-gold-50'}
                   `}>
                     <Icon size={24} strokeWidth={isActive ? 2 : 1.5} />
                   </div>
                   
-                  {/* Active Indicator Dot */}
+                  {/* Active Indicator Dot (Static) */}
                   {isActive && (
-                    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold-600 shadow-sm animate-pulse" />
+                    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gold-600/50" />
                   )}
                 </button>
               );
@@ -90,14 +89,14 @@ const TVControls: React.FC<TVControlsProps> = ({
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleMute}
-              className="text-neutral-500 hover:text-gold-600 transition-colors p-2 hover:bg-gold-50 rounded-full hover:scale-105 active:scale-95"
+              className="text-neutral-500 hover:text-gold-600 transition-colors p-2 hover:bg-gold-50 rounded-full active:scale-95"
               title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
             >
               {isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
             </button>
             <button 
               onClick={toggleFullscreen}
-              className="text-neutral-500 hover:text-gold-600 transition-colors p-2 hover:bg-gold-50 rounded-full hover:scale-105 active:scale-95"
+              className="text-neutral-500 hover:text-gold-600 transition-colors p-2 hover:bg-gold-50 rounded-full active:scale-95"
               title="Toàn màn hình"
             >
               <Maximize2 size={22} />
@@ -117,34 +116,35 @@ const TVControls: React.FC<TVControlsProps> = ({
 
       {/* 
         MOBILE INTERACTION
-        Toggle button at bottom-right
+        Friendly "Remote Control" Style
       */}
       <div className="md:hidden">
-         {/* Toggle Button */}
+         {/* Toggle Button - Floating at bottom right */}
          <button 
            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
            className={`
-             fixed bottom-6 right-6 z-50 
-             w-12 h-12 rounded-full 
+             fixed bottom-8 right-6 z-50 
+             w-14 h-14 rounded-full 
              flex items-center justify-center 
-             shadow-lg backdrop-blur-md transition-all duration-300
-             ${isMobileMenuOpen ? 'bg-gold-500 text-white rotate-90' : 'bg-white/90 text-neutral-800 border border-gold-200'}
+             shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all duration-300
+             border border-white/50
+             ${isMobileMenuOpen ? 'bg-gold-500 text-white rotate-90 scale-110' : 'bg-white/80 text-neutral-800 hover:scale-105 active:scale-95'}
            `}
          >
-            {isMobileMenuOpen ? <ChevronDown size={24} /> : <Menu size={24} />}
+            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
          </button>
 
-         {/* Mobile Menu Overlay */}
+         {/* Menu Overlay - Remote Control Card */}
          <div className={`
-           fixed bottom-20 left-4 right-4 z-50
-           bg-white/95 backdrop-blur-xl
-           rounded-2xl shadow-2xl border border-gold-100
+           fixed bottom-24 right-6 z-50 w-64
+           bg-white/90 backdrop-blur-xl border border-white/50
+           rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.15)]
            p-4
-           flex flex-col gap-4
-           transition-all duration-300 origin-bottom-right
-           ${isMobileMenuOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-10 pointer-events-none'}
+           transition-all duration-300 ease-out origin-bottom-right
+           ${isMobileMenuOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-12 pointer-events-none'}
          `}>
-             <div className="grid grid-cols-4 gap-2">
+             {/* Navigation Grid (2x2) for larger touch targets */}
+             <div className="grid grid-cols-2 gap-3 mb-4">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentView === item.id;
@@ -156,29 +156,39 @@ const TVControls: React.FC<TVControlsProps> = ({
                         setIsMobileMenuOpen(false);
                       }}
                       className={`
-                        flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-colors
-                        ${isActive ? 'bg-gold-50 text-gold-600' : 'text-neutral-500 hover:bg-neutral-50'}
+                        flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all duration-200
+                        border
+                        ${isActive 
+                          ? 'bg-gold-500 text-white border-gold-400 shadow-lg shadow-gold-500/30' 
+                          : 'bg-white/50 text-neutral-600 border-white/60 hover:bg-white hover:shadow-sm active:scale-95'
+                        }
                       `}
                     >
-                       <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-                       <span className="text-[10px] font-medium">{item.label}</span>
+                       <Icon size={24} strokeWidth={isActive ? 2 : 1.5} />
+                       <span className="text-xs font-bold tracking-wide">{item.label}</span>
                     </button>
                   );
                 })}
              </div>
              
-             <div className="h-px w-full bg-neutral-100" />
+             {/* Divider */}
+             <div className="w-12 h-1 bg-neutral-200 mx-auto rounded-full mb-4" />
              
-             <div className="flex items-center justify-around">
+             {/* Utilities Row */}
+             <div className="flex gap-3">
                 <button 
                   onClick={toggleMute}
-                  className="p-3 bg-neutral-50 rounded-full text-neutral-600 active:scale-95 transition-transform"
+                  className={`
+                    flex-1 py-3 rounded-2xl flex items-center justify-center gap-2
+                    transition-all active:scale-95 border
+                    ${isMuted ? 'bg-red-50 text-red-500 border-red-100' : 'bg-neutral-100 text-neutral-600 border-neutral-200 hover:bg-white'}
+                  `}
                 >
                    {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                 </button>
                 <button 
                   onClick={toggleFullscreen}
-                  className="p-3 bg-neutral-50 rounded-full text-neutral-600 active:scale-95 transition-transform"
+                  className="flex-1 py-3 bg-neutral-100 text-neutral-600 border border-neutral-200 rounded-2xl flex items-center justify-center transition-all active:scale-95 hover:bg-white"
                 >
                    <Maximize2 size={20} />
                 </button>

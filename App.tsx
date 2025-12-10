@@ -11,10 +11,14 @@ import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('HOME');
   
+  // VERSION 2 KEYS: Force reload to clear old data with time parameters
+  const STORAGE_KEY_ITEMS = 'luxe_portfolio_items_v2';
+  const STORAGE_KEY_CONTACT = 'luxe_contact_info_v2';
+  
   // Initialize from LocalStorage OR fall back to database.ts
   const [items, setItems] = useState<PortfolioItem[]>(() => {
     try {
-      const saved = localStorage.getItem('luxe_portfolio_items');
+      const saved = localStorage.getItem(STORAGE_KEY_ITEMS);
       return saved ? JSON.parse(saved) : (INITIAL_DATABASE?.portfolioItems || []);
     } catch (e) {
       return INITIAL_DATABASE?.portfolioItems || [];
@@ -23,7 +27,7 @@ const App: React.FC = () => {
 
   const [contactInfo, setContactInfo] = useState<ContactInfo>(() => {
     try {
-      const saved = localStorage.getItem('luxe_contact_info');
+      const saved = localStorage.getItem(STORAGE_KEY_CONTACT);
       if (saved) {
         // Merge saved data with initial structure to ensure new fields (like facebook/zalo) exist
         return { ...(INITIAL_DATABASE?.contactInfo || {}), ...JSON.parse(saved) };
@@ -78,14 +82,14 @@ const App: React.FC = () => {
 
   // Sync to LocalStorage
   useEffect(() => {
-    localStorage.setItem('luxe_portfolio_items', JSON.stringify(items));
+    localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
     if (items.length > 0 && !items.find(i => i.id === activeItem?.id)) {
       setActiveItem(items[0]);
     }
   }, [items]);
 
   useEffect(() => {
-    localStorage.setItem('luxe_contact_info', JSON.stringify(contactInfo));
+    localStorage.setItem(STORAGE_KEY_CONTACT, JSON.stringify(contactInfo));
   }, [contactInfo]);
 
   const handleNavigate = (newView: ViewState) => {
