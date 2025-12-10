@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { PortfolioItem, ContactInfo } from '../types';
-import { Trash2, Edit2, Plus, Save, X, LogIn, Image as ImageIcon, Video, Upload, Sparkles, Loader2, User, Download, Search } from 'lucide-react';
+import { Trash2, Edit2, Plus, Save, X, LogIn, Image as ImageIcon, Video, Upload, Sparkles, Loader2, User, Download, Search, CheckCircle } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
 interface AdminPanelProps {
@@ -31,11 +31,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
     description: ''
   });
 
+  const [suggestedThumbnails, setSuggestedThumbnails] = useState<string[]>([]);
   const [profileFormData, setProfileFormData] = useState<ContactInfo>(contactInfo);
+
+  // Helper to extract YouTube ID
+  const getYouTubeId = (url: string) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    return match ? match[1] : null;
+  };
+
+  // Watch URL changes to suggest thumbnails
+  useEffect(() => {
+    const videoId = getYouTubeId(formData.url || '');
+    if (videoId) {
+      setSuggestedThumbnails([
+        `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+        `https://img.youtube.com/vi/${videoId}/sddefault.jpg`,
+        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+      ]);
+    } else {
+      setSuggestedThumbnails([]);
+    }
+  }, [formData.url]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Updated credentials as requested
     if (username === 'vmedia' && password === 'Quangnhan@1606') {
       setIsAuthenticated(true);
       setError('');
@@ -94,14 +115,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `
-        Bạn là một chuyên gia biên tập nội dung cho portfolio phim ảnh cao cấp (Cinematic/Luxury).
-        Dựa vào đường dẫn này: "${formData.url}" (hoặc giả định nội dung nếu không truy cập được link), hãy sáng tạo nội dung tiếng Việt cho 3 trường sau:
-        1. title: Một tiêu đề ngắn gọn, sang trọng, mang tính nghệ thuật.
-        2. client: Tên loại dự án hoặc khách hàng giả định.
-        3. description: Một mô tả ngắn (khoảng 2 câu), dùng từ ngữ bay bổng, chuyên nghiệp.
-        Trả về kết quả CỰC KỲ CHÍNH XÁC dưới dạng JSON không có markdown block:
+        Bạn là Creative Director cho một Production House chuyên nghiệp (V MEDIA).
+        Hãy phân tích link video này: "${formData.url}".
+        
+        Nhiệm vụ:
+        1. **title**: Lấy tiêu đề gốc của YouTube. Nếu tiêu đề gốc sơ sài, hãy viết lại cho hay, giật gân hoặc đậm chất điện ảnh (Cinematic).
+        2. **client**: Suy luận ra tên khách hàng hoặc thể loại dự án (Ví dụ: MV Ca Nhạc, TVC Doanh Nghiệp, Phóng Sự Cưới, Fashion Film).
+        3. **description**: KHÔNG được chỉ tóm tắt nội dung video. Hãy viết một đoạn mô tả ngắn (2-3 câu) dưới góc độ **giới thiệu dịch vụ làm phim**. 
+           - Thay vì nói "Video này nói về...", hãy nói "Chúng tôi đã thực hiện...", "Dự án TVC này được V MEDIA sản xuất với kỹ thuật...", "Góc máy điện ảnh lột tả vẻ đẹp...".
+           - Nhấn mạnh vào chất lượng hình ảnh, cảm xúc và kỹ thuật quay dựng.
+           - Ngôn ngữ: Tiếng Việt chuyên nghiệp, sang trọng.
+
+        Trả về JSON duy nhất:
         { "title": "...", "client": "...", "description": "..." }
       `;
+      
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
@@ -116,6 +144,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
           client: result.client || prev.client,
           description: result.description || prev.description
         }));
+        
+        // Auto-select the best thumbnail if not set
+        if (!formData.thumbnail && suggestedThumbnails.length > 0) {
+            setFormData(prev => ({...prev, thumbnail: suggestedThumbnails[0]}));
+        }
       }
     } catch (err) {
       console.error("AI Error:", err);
@@ -317,9 +350,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
                           {isGenerating ? (
                             <><Loader2 size={14} className="animate-spin" /> Đang phân tích...</>
                           ) : (
-                            <><Sparkles size={14} className="text-gold-600" /> AI Gợi Ý (Tiếng Việt)</>
+                            <><Sparkles size={14} className="text-gold-600" /> AI Tạo Nội Dung (Tiếng Việt)</>
                           )}
                         </button>
+                      </div>
+
+                      {/* Thumbnail Selection */}
+                      <div>
+                        <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Thumbnail</label>
+                        
+                        {/* Auto-suggested thumbnails from YouTube */}
+                        {suggestedThumbnails.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2 mb-3">
+                             {suggestedThumbnails.map((thumb, idx) => (
+                               <div 
+                                 key={idx} 
+                                 onClick={() => setFormData({...formData, thumbnail: thumb})}
+                                 className={`relative aspect-video rounded cursor-pointer overflow-hidden border-2 transition-all ${formData.thumbnail === thumb ? 'border-gold-500 ring-1 ring-gold-500' : 'border-transparent hover:border-gold-200'}`}
+                               >
+                                  <img src={thumb} className="w-full h-full object-cover" alt="Suggest" />
+                                  {formData.thumbnail === thumb && (
+                                    <div className="absolute inset-0 bg-gold-500/20 flex items-center justify-center">
+                                      <CheckCircle size={16} className="text-white fill-gold-500" />
+                                    </div>
+                                  )}
+                               </div>
+                             ))}
+                          </div>
+                        )}
+
+                        <input 
+                          type="text" 
+                          className="w-full p-2 rounded border border-neutral-200 focus:border-gold-500 outline-none text-sm font-mono text-xs mb-2"
+                          value={formData.thumbnail}
+                          onChange={e => setFormData({...formData, thumbnail: e.target.value})}
+                          placeholder="URL Thumbnail..."
+                        />
+                        <div className="flex items-center gap-2">
+                           <label className="cursor-pointer bg-neutral-100 hover:bg-gold-50 border border-neutral-200 hover:border-gold-300 text-neutral-600 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all w-full justify-center">
+                              <Upload size={14} /> <span>Tải Ảnh Từ Máy</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                           </label>
+                        </div>
+                        {formData.thumbnail && (
+                          <div className="mt-2 h-32 w-full bg-neutral-100 rounded overflow-hidden border border-neutral-200 relative group">
+                            <img src={formData.thumbnail} alt="Preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/300?text=Invalid+Image')}/>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -340,32 +417,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
                           onChange={e => setFormData({...formData, client: e.target.value})}
                         />
                       </div>
+                      
                       <div>
-                        <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Thumbnail</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-2 rounded border border-neutral-200 focus:border-gold-500 outline-none text-sm font-mono text-xs mb-2"
-                          value={formData.thumbnail}
-                          onChange={e => setFormData({...formData, thumbnail: e.target.value})}
-                        />
-                        <div className="flex items-center gap-2">
-                           <label className="cursor-pointer bg-neutral-100 hover:bg-gold-50 border border-neutral-200 hover:border-gold-300 text-neutral-600 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all w-full justify-center">
-                              <Upload size={14} /> <span>Tải Ảnh Lên</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                           </label>
-                        </div>
-                        {formData.thumbnail && (
-                          <div className="mt-2 h-32 w-full bg-neutral-100 rounded overflow-hidden border border-neutral-200 relative group">
-                            <img src={formData.thumbnail} alt="Preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/300?text=Invalid+Image')}/>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Mô Tả</label>
+                        <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Mô Tả & Giới Thiệu Dịch Vụ</label>
                         <textarea 
-                          className="w-full p-2 rounded border border-neutral-200 focus:border-gold-500 outline-none text-sm resize-none h-20"
+                          className="w-full p-2 rounded border border-neutral-200 focus:border-gold-500 outline-none text-sm resize-none h-24 leading-relaxed"
                           value={formData.description}
                           onChange={e => setFormData({...formData, description: e.target.value})}
+                          placeholder="Mô tả dự án và giới thiệu năng lực sản xuất..."
                         />
                       </div>
                       <div className="flex gap-2 pt-4">

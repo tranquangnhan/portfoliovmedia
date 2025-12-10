@@ -36,22 +36,20 @@ const App: React.FC = () => {
     // Listen for changes
     const unsubscribeItems = onValue(itemsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
+      if (data && Array.isArray(data) && data.length > 0) {
         setItems(data);
         // If the currently active item was deleted/changed, or on first load, reset active item
         setActiveItem((prev) => {
           const exists = data.find((i: PortfolioItem) => i.id === prev?.id);
           return exists || data[0] || null;
         });
-      } else {
-        // If DB is empty (new project), set initial data to Firebase
-        // This acts as a seeder
-        set(itemsRef, INITIAL_DATABASE.portfolioItems);
-      }
+      } 
+      // REMOVED: Automatic seeding (set call) to prevent overwriting existing data if fetch fails or is empty temporarily.
+      // If data is null, the app simply continues using the INITIAL_DATABASE loaded in useState.
+      
       setIsLoadingFirebase(false);
     }, (error) => {
       console.error("Firebase read failed:", error);
-      // Fallback to local is already handled by initial state, just stop loading
       setIsLoadingFirebase(false);
     });
 
@@ -61,10 +59,8 @@ const App: React.FC = () => {
       const data = snapshot.val();
       if (data) {
         setContactInfo((prev) => ({ ...prev, ...data })); // Merge to ensure new fields
-      } else {
-         // Seed initial contact info if empty
-         set(contactRef, INITIAL_DATABASE.contactInfo);
       }
+      // REMOVED: Automatic seeding for contact info.
     });
 
     return () => {
@@ -277,7 +273,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'HOME' && activeItem && (
-          <div className="absolute bottom-20 left-6 md:top-8 md:left-12 z-20 max-w-[80%] md:max-w-md animate-slide-up pointer-events-none">
+          <div className="absolute bottom-6 left-6 md:top-8 md:left-12 z-20 max-w-[80%] md:max-w-md animate-slide-up pointer-events-none">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-[1px] w-6 md:w-8 bg-gold-400"></div>
               <span className="text-gold-400 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">Đang Trình Chiếu</span>
@@ -291,15 +287,31 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {view === 'HOME' && items.length > 0 && (
+        <div className="md:hidden fixed top-6 left-6 z-30">
           <button 
             onClick={() => handleNavigate('PORTFOLIO')}
-            className="absolute top-6 left-6 md:hidden z-30 p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-gold-500 transition-colors"
-            title="Quay lại danh sách"
+            className={`
+              p-2.5 rounded-full backdrop-blur-md border border-white/30 
+              shadow-lg transition-all duration-300
+              ${view !== 'HOME' ? 'bg-gold-500 text-white border-gold-400' : 'bg-black/20 text-white hover:bg-gold-500'}
+            `}
+            title={view === 'HOME' ? "Xem Danh Sách" : "Đóng"}
           >
-            <X size={20} className="md:w-6 md:h-6" />
+            {view === 'HOME' ? <div className="w-5 h-5 grid grid-cols-2 gap-0.5"><div className="bg-current rounded-[1px]"></div><div className="bg-current rounded-[1px]"></div><div className="bg-current rounded-[1px]"></div><div className="bg-current rounded-[1px]"></div></div> : <X size={20} />}
           </button>
-        )}
+        </div>
+
+        {/* Desktop Close/Back Button - Hidden on Mobile, Fixed at Top-Left */}
+        <div className="hidden md:block fixed top-8 left-8 z-50 md:hidden">
+          {view !== 'HOME' && (
+             <button 
+             onClick={() => handleNavigate('HOME')}
+             className="p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-gold-500 transition-colors border border-white/10"
+           >
+             <X size={24} />
+           </button>
+          )}
+        </div>
 
         <TVControls 
           currentView={view} 
