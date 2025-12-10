@@ -9,13 +9,13 @@ import { getDatabase } from "firebase/database";
 // 5. Copy các thông tin trong firebaseConfig dán vào dưới đây:
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD-YOUR_API_KEY_HERE",
-  authDomain: "your-project-id.firebaseapp.com",
-  databaseURL: "https://your-project-id-default-rtdb.firebaseio.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+    apiKey: "AIzaSyDPSVMuiiHb3RnpfK78KACYcSUoopqB7RY",
+    authDomain: "vmedia-8b817.firebaseapp.com",
+    databaseURL: "https://vmedia-8b817-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "vmedia-8b817",
+    storageBucket: "vmedia-8b817.firebasestorage.app",
+    messagingSenderId: "165938875040",
+    appId: "1:165938875040:web:38d1dd36cf9e32bef797c5"
 };
 
 // Initialize Firebase
