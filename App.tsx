@@ -24,6 +24,10 @@ const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
 
+  // Swipe State
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
   // --- FIREBASE SYNC ---
   useEffect(() => {
     // Reference to 'portfolioItems' in Firebase
@@ -81,10 +85,19 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', checkHash);
   }, []);
 
-  // SEO Update Effect
+  // SEO & Social Share Update Effect
   useEffect(() => {
-    if (contactInfo.seoTitle) document.title = contactInfo.seoTitle;
-    
+    // Helper to update or create OG tags
+    const updateOG = (property: string, content: string) => {
+      let element = document.querySelector(`meta[property="${property}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('property', property);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
     const updateMeta = (name: string, content: string) => {
       let element = document.querySelector(`meta[name="${name}"]`);
       if (!element) {
@@ -95,9 +108,29 @@ const App: React.FC = () => {
       element.setAttribute('content', content);
     };
 
-    if (contactInfo.seoDescription) updateMeta('description', contactInfo.seoDescription);
-    if (contactInfo.seoKeywords) updateMeta('keywords', contactInfo.seoKeywords);
-  }, [contactInfo]);
+    if (contactInfo.seoTitle) {
+      document.title = contactInfo.seoTitle;
+      updateOG('og:title', contactInfo.seoTitle);
+    }
+    
+    if (contactInfo.seoDescription) {
+      updateMeta('description', contactInfo.seoDescription);
+      updateOG('og:description', contactInfo.seoDescription);
+    }
+    
+    if (contactInfo.seoKeywords) {
+      updateMeta('keywords', contactInfo.seoKeywords);
+    }
+
+    // Set OG Image (Use first portfolio item thumbnail or a default)
+    if (items.length > 0 && items[0].thumbnail) {
+      updateOG('og:image', items[0].thumbnail);
+    }
+
+    updateOG('og:url', window.location.href);
+    updateOG('og:type', 'website');
+
+  }, [contactInfo, items]);
 
   const handleNavigate = (newView: ViewState) => {
     setView(newView);
@@ -156,9 +189,41 @@ const App: React.FC = () => {
     }
   };
 
+  // Touch Handlers for Swipe
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null); // Reset
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const minSwipeDistance = 50;
+
+    // Swipe Up (Next Video)
+    if (distance > minSwipeDistance) {
+      handleNext();
+    }
+    
+    // Swipe Down (Previous Video)
+    if (distance < -minSwipeDistance) {
+      handlePrev();
+    }
+  };
+
   return (
-    // Global Scaling Container
-    <div className="fixed inset-0 w-screen h-screen bg-black overflow-hidden">
+    // Global Scaling Container with Swipe Handlers
+    <div 
+      className="fixed inset-0 w-screen h-screen bg-black overflow-hidden touch-none"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       <div className="w-[125%] h-[125%] origin-top-left transform scale-[0.8] relative font-sans select-none group/app">
         
         <div className="absolute inset-0 z-0">
@@ -212,12 +277,12 @@ const App: React.FC = () => {
         )}
 
         {view === 'HOME' && activeItem && (
-          <div className="absolute top-6 left-6 md:top-8 md:left-12 z-20 max-w-[70%] md:max-w-md animate-slide-up pointer-events-none">
+          <div className="absolute bottom-20 left-6 md:top-8 md:left-12 z-20 max-w-[80%] md:max-w-md animate-slide-up pointer-events-none">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-[1px] w-6 md:w-8 bg-gold-400"></div>
               <span className="text-gold-400 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">Đang Trình Chiếu</span>
             </div>
-            <h1 className="text-2xl md:text-5xl font-serif text-white mb-2 leading-tight drop-shadow-md">
+            <h1 className="text-xl md:text-5xl font-serif text-white mb-2 leading-tight drop-shadow-md">
               {activeItem.title}
             </h1>
             <p className="text-white/70 text-xs md:text-base font-light border-l-2 border-white/20 pl-4 py-1 hidden md:block">
@@ -226,10 +291,11 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {view === 'HOME' && items.length > 0 && activeItem?.id !== items[0].id && (
+        {view === 'HOME' && items.length > 0 && (
           <button 
             onClick={() => handleNavigate('PORTFOLIO')}
-            className="absolute top-6 right-6 md:top-8 md:right-8 z-30 p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-gold-500 transition-colors"
+            className="absolute top-6 left-6 md:hidden z-30 p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-gold-500 transition-colors"
+            title="Quay lại danh sách"
           >
             <X size={20} className="md:w-6 md:h-6" />
           </button>

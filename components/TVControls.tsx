@@ -116,35 +116,35 @@ const TVControls: React.FC<TVControlsProps> = ({
 
       {/* 
         MOBILE INTERACTION
-        Friendly "Remote Control" Style
+        Menu Button fixed at Top Right
       */}
       <div className="md:hidden">
-         {/* Toggle Button - Floating at bottom right */}
+         {/* Toggle Button - Fixed at Top Right */}
          <button 
            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
            className={`
-             fixed bottom-8 right-6 z-50 
-             w-14 h-14 rounded-full 
+             fixed top-6 right-6 z-50 
+             w-12 h-12 rounded-full 
              flex items-center justify-center 
-             shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all duration-300
+             shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md transition-all duration-300
              border border-white/50
-             ${isMobileMenuOpen ? 'bg-gold-500 text-white rotate-90 scale-110' : 'bg-white/80 text-neutral-800 hover:scale-105 active:scale-95'}
+             ${isMobileMenuOpen ? 'bg-gold-500 text-white rotate-90 scale-110' : 'bg-white/90 text-neutral-800 hover:scale-105 active:scale-95'}
            `}
          >
-            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
          </button>
 
-         {/* Menu Overlay - Remote Control Card */}
+         {/* Menu Overlay - Expands from Top Right */}
          <div className={`
-           fixed bottom-24 right-6 z-50 w-64
-           bg-white/90 backdrop-blur-xl border border-white/50
-           rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.15)]
-           p-4
-           transition-all duration-300 ease-out origin-bottom-right
-           ${isMobileMenuOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-12 pointer-events-none'}
+           fixed top-24 right-6 z-50 w-60
+           bg-white/95 backdrop-blur-xl border border-white/50
+           rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.2)]
+           p-3
+           transition-all duration-300 ease-out origin-top-right
+           ${isMobileMenuOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 -translate-y-12 pointer-events-none'}
          `}>
-             {/* Navigation Grid (2x2) for larger touch targets */}
-             <div className="grid grid-cols-2 gap-3 mb-4">
+             {/* Navigation Grid */}
+             <div className="grid grid-cols-2 gap-2 mb-3">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentView === item.id;
@@ -156,41 +156,42 @@ const TVControls: React.FC<TVControlsProps> = ({
                         setIsMobileMenuOpen(false);
                       }}
                       className={`
-                        flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all duration-200
+                        flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all duration-200
                         border
                         ${isActive 
-                          ? 'bg-gold-500 text-white border-gold-400 shadow-lg shadow-gold-500/30' 
-                          : 'bg-white/50 text-neutral-600 border-white/60 hover:bg-white hover:shadow-sm active:scale-95'
+                          ? 'bg-gold-500 text-white border-gold-400 shadow-md shadow-gold-500/20' 
+                          : 'bg-neutral-50 text-neutral-600 border-neutral-100 hover:bg-white active:scale-95'
                         }
                       `}
                     >
-                       <Icon size={24} strokeWidth={isActive ? 2 : 1.5} />
-                       <span className="text-xs font-bold tracking-wide">{item.label}</span>
+                       <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
+                       <span className="text-[10px] font-bold tracking-wide uppercase">{item.label}</span>
                     </button>
                   );
                 })}
              </div>
              
              {/* Divider */}
-             <div className="w-12 h-1 bg-neutral-200 mx-auto rounded-full mb-4" />
+             <div className="w-full h-px bg-neutral-100 mb-3" />
              
              {/* Utilities Row */}
-             <div className="flex gap-3">
+             <div className="flex gap-2">
                 <button 
-                  onClick={toggleMute}
+                  onClick={() => { toggleMute(); setIsMobileMenuOpen(false); }}
                   className={`
-                    flex-1 py-3 rounded-2xl flex items-center justify-center gap-2
-                    transition-all active:scale-95 border
-                    ${isMuted ? 'bg-red-50 text-red-500 border-red-100' : 'bg-neutral-100 text-neutral-600 border-neutral-200 hover:bg-white'}
+                    flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2
+                    transition-all active:scale-95 border text-xs font-medium
+                    ${isMuted ? 'bg-red-50 text-red-500 border-red-100' : 'bg-neutral-50 text-neutral-600 border-neutral-100'}
                   `}
                 >
-                   {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                   <span>{isMuted ? 'Bật tiếng' : 'Tắt tiếng'}</span>
                 </button>
                 <button 
-                  onClick={toggleFullscreen}
-                  className="flex-1 py-3 bg-neutral-100 text-neutral-600 border border-neutral-200 rounded-2xl flex items-center justify-center transition-all active:scale-95 hover:bg-white"
+                  onClick={() => { toggleFullscreen(); setIsMobileMenuOpen(false); }}
+                  className="w-12 bg-neutral-50 text-neutral-600 border border-neutral-100 rounded-xl flex items-center justify-center transition-all active:scale-95"
                 >
-                   <Maximize2 size={20} />
+                   <Maximize2 size={16} />
                 </button>
              </div>
          </div>
