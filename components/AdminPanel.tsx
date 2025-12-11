@@ -45,10 +45,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
   useEffect(() => {
     const videoId = getYouTubeId(formData.url || '');
     if (videoId) {
+      // YouTube generates specific filenames for different frames:
+      // maxresdefault.jpg: The high-res custom cover
+      // 1.jpg, 2.jpg, 3.jpg: Auto-generated frames from different timestamps (start, middle, end)
+      // This ensures the images are actually DIFFERENT visual content.
       setSuggestedThumbnails([
-        `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        `https://img.youtube.com/vi/${videoId}/sddefault.jpg`,
-        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+        `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`, // Ảnh bìa chính (HD)
+        `https://img.youtube.com/vi/${videoId}/1.jpg`,            // Frame 1 (đầu video)
+        `https://img.youtube.com/vi/${videoId}/2.jpg`,            // Frame 2 (giữa video)
+        `https://img.youtube.com/vi/${videoId}/3.jpg`             // Frame 3 (cuối video)
       ]);
     } else {
       setSuggestedThumbnails([]);
@@ -112,19 +117,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
       return;
     }
     setIsGenerating(true);
+
+    let contextTitle = formData.title; // Use current title if user typed one
+
+    // Try to fetch real title from YouTube via NoEmbed (CORS friendly)
+    if (!contextTitle && formData.url.includes('youtu')) {
+      try {
+        const oembedRes = await fetch(`https://noembed.com/embed?url=${formData.url}`);
+        const oembedData = await oembedRes.json();
+        if (oembedData && oembedData.title) {
+          contextTitle = oembedData.title;
+          // Optimistically set the title immediately
+          setFormData(prev => ({ ...prev, title: oembedData.title }));
+        }
+      } catch (e) {
+        console.warn("Could not fetch YouTube metadata automatically", e);
+      }
+    }
+
+    if (!contextTitle) {
+      contextTitle = "Một video clip giới thiệu doanh nghiệp hoặc MV ca nhạc";
+      alert("Không thể lấy tiêu đề gốc từ YouTube. AI sẽ tạo nội dung chung chung. Bạn nên nhập Tiêu đề trước để AI viết chính xác hơn.");
+    }
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `
-        Bạn là Creative Director cho một Production House chuyên nghiệp (V MEDIA).
-        Hãy phân tích link video này: "${formData.url}".
+        Tôi có một video với tiêu đề gốc là: "${contextTitle}".
         
-        Nhiệm vụ:
-        1. **title**: Lấy tiêu đề gốc của YouTube. Nếu tiêu đề gốc sơ sài, hãy viết lại cho hay, giật gân hoặc đậm chất điện ảnh (Cinematic).
-        2. **client**: Suy luận ra tên khách hàng hoặc thể loại dự án (Ví dụ: MV Ca Nhạc, TVC Doanh Nghiệp, Phóng Sự Cưới, Fashion Film).
-        3. **description**: KHÔNG được chỉ tóm tắt nội dung video. Hãy viết một đoạn mô tả ngắn (2-3 câu) dưới góc độ **giới thiệu dịch vụ làm phim**. 
-           - Thay vì nói "Video này nói về...", hãy nói "Chúng tôi đã thực hiện...", "Dự án TVC này được V MEDIA sản xuất với kỹ thuật...", "Góc máy điện ảnh lột tả vẻ đẹp...".
-           - Nhấn mạnh vào chất lượng hình ảnh, cảm xúc và kỹ thuật quay dựng.
-           - Ngôn ngữ: Tiếng Việt chuyên nghiệp, sang trọng.
+        Bạn là Creative Director cho V MEDIA (Production House chuyên nghiệp). 
+        Hãy viết lại thông tin cho dự án này để đưa vào Portfolio.
+
+        Yêu cầu output JSON:
+        1. **title**: Viết lại tiêu đề cho sang trọng, ngắn gọn, đậm chất điện ảnh (Cinematic). Giữ nguyên ý nghĩa gốc.
+        2. **client**: Dựa vào tiêu đề, đoán xem khách hàng là ai hoặc thể loại gì (VD: TVC Doanh Nghiệp, Phóng Sự Cưới, Fashion Film, MV Ca Nhạc).
+        3. **description**: Viết đoạn mô tả ngắn (2-3 câu) theo phong cách **giới thiệu dịch vụ**.
+           - Đừng chỉ kể lại nội dung video.
+           - Hãy nói về cách V MEDIA đã sản xuất nó: Nhấn mạnh vào **kỹ thuật quay, ánh sáng, màu sắc (color grading) và cảm xúc**.
+           - Ví dụ: "Dự án TVC được thực hiện với các góc máy dynamic..." hoặc "Những thước phim giàu cảm xúc ghi lại khoảnh khắc..."
+           - Ngôn ngữ: Tiếng Việt cao cấp.
 
         Trả về JSON duy nhất:
         { "title": "...", "client": "...", "description": "..." }
@@ -145,14 +176,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
           description: result.description || prev.description
         }));
         
-        // Auto-select the best thumbnail if not set
+        // Auto-select the Main High Res thumbnail if not set
         if (!formData.thumbnail && suggestedThumbnails.length > 0) {
             setFormData(prev => ({...prev, thumbnail: suggestedThumbnails[0]}));
         }
       }
     } catch (err) {
       console.error("AI Error:", err);
-      alert("Không thể tạo nội dung tự động lúc này.");
+      alert("Lỗi khi gọi AI. Vui lòng thử lại sau.");
     } finally {
       setIsGenerating(false);
     }
@@ -353,50 +384,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ items, contactInfo, onUpdateIte
                             <><Sparkles size={14} className="text-gold-600" /> AI Tạo Nội Dung (Tiếng Việt)</>
                           )}
                         </button>
+                        <p className="text-[10px] text-neutral-400 mt-1 italic">*Tự động lấy tiêu đề gốc và viết mô tả dịch vụ.</p>
                       </div>
 
                       {/* Thumbnail Selection */}
                       <div>
-                        <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Thumbnail</label>
+                        <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Chọn Thumbnail Tự Động</label>
                         
                         {/* Auto-suggested thumbnails from YouTube */}
-                        {suggestedThumbnails.length > 0 && (
-                          <div className="grid grid-cols-3 gap-2 mb-3">
+                        {suggestedThumbnails.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
                              {suggestedThumbnails.map((thumb, idx) => (
                                <div 
                                  key={idx} 
                                  onClick={() => setFormData({...formData, thumbnail: thumb})}
-                                 className={`relative aspect-video rounded cursor-pointer overflow-hidden border-2 transition-all ${formData.thumbnail === thumb ? 'border-gold-500 ring-1 ring-gold-500' : 'border-transparent hover:border-gold-200'}`}
+                                 className={`relative aspect-video rounded cursor-pointer overflow-hidden border-2 transition-all group/thumb ${formData.thumbnail === thumb ? 'border-gold-500 ring-1 ring-gold-500' : 'border-neutral-200 hover:border-gold-200'}`}
                                >
                                   <img src={thumb} className="w-full h-full object-cover" alt="Suggest" />
+                                  
+                                  {/* Label for thumbnail type */}
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                                     {idx === 0 ? 'Ảnh Bìa Chính' : `Frame ${idx}`}
+                                  </div>
+
                                   {formData.thumbnail === thumb && (
                                     <div className="absolute inset-0 bg-gold-500/20 flex items-center justify-center">
-                                      <CheckCircle size={16} className="text-white fill-gold-500" />
+                                      <CheckCircle size={20} className="text-white fill-gold-500 shadow-sm" />
                                     </div>
                                   )}
                                </div>
                              ))}
                           </div>
+                        ) : (
+                          <p className="text-[10px] text-neutral-400 italic mb-2">Nhập link YouTube để hiện gợi ý ảnh.</p>
                         )}
 
-                        <input 
-                          type="text" 
-                          className="w-full p-2 rounded border border-neutral-200 focus:border-gold-500 outline-none text-sm font-mono text-xs mb-2"
-                          value={formData.thumbnail}
-                          onChange={e => setFormData({...formData, thumbnail: e.target.value})}
-                          placeholder="URL Thumbnail..."
-                        />
-                        <div className="flex items-center gap-2">
-                           <label className="cursor-pointer bg-neutral-100 hover:bg-gold-50 border border-neutral-200 hover:border-gold-300 text-neutral-600 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all w-full justify-center">
-                              <Upload size={14} /> <span>Tải Ảnh Từ Máy</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                           </label>
+                        <div className="relative">
+                            <input 
+                              type="text" 
+                              className="w-full p-2 rounded border border-neutral-200 focus:border-gold-500 outline-none text-sm font-mono text-xs pr-24"
+                              value={formData.thumbnail}
+                              onChange={e => setFormData({...formData, thumbnail: e.target.value})}
+                              placeholder="Hoặc nhập URL ảnh khác..."
+                            />
+                            <label className="absolute right-1 top-1 bottom-1 bg-neutral-100 hover:bg-gold-50 text-neutral-600 px-3 rounded flex items-center gap-1 cursor-pointer transition-colors border border-neutral-200">
+                               <Upload size={12} /> <span className="text-[10px] font-bold">Upload</span>
+                               <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            </label>
                         </div>
-                        {formData.thumbnail && (
-                          <div className="mt-2 h-32 w-full bg-neutral-100 rounded overflow-hidden border border-neutral-200 relative group">
-                            <img src={formData.thumbnail} alt="Preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/300?text=Invalid+Image')}/>
-                          </div>
-                        )}
                       </div>
 
                       <div>
